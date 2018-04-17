@@ -1,10 +1,10 @@
 #coding:utf-8
 from tkinter import *
-from tkinter import messagebox
 import time
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 import threading
+import random
 class Automan(Frame):
     def __init__(self,master=None):
         Frame.__init__(self, master)
@@ -14,12 +14,15 @@ class Automan(Frame):
     def createWidgets(self):
         self.username_var= StringVar(self,'')
         self.password_var=StringVar(self,'')
-        self.login_url_var=StringVar(self,'http://www.sectown.cn/login')
-        self.auto_url_var=StringVar(self,'https://www.sectown.cn/group/14/thread/')
+        self.login_url_var=StringVar(self,'http://dev3.securitytown.net/login')
+        self.auto_url_var=StringVar(self,'http://dev3.securitytown.net/group/14/thread/33')
+        #self.login_url_var=StringVar(self,'http://www.sectown.cn/login')
+        #self.auto_url_var=StringVar(self,'https://www.sectown.cn/group/14/thread/')
         self.sleeptime_var=StringVar(self,'0.1')
         self.target_floor_var=StringVar(self,'0')
         self.con_var=StringVar(self,u'酷酷的我抢到了这一层！')
         self.info_var=StringVar(self,u'')
+        self.check_box_var=IntVar(self)
         self.hint_var=StringVar(self,u'不要多开该程序，需要重新抢楼的话请终止抢楼先。\n有问题就联系金成强。不要提奇奇怪怪的需求！\n')
 
         self.hint_label=Label(self)
@@ -84,6 +87,9 @@ class Automan(Frame):
         self.con_entry['textvariable'] = self.con_var
         self.con_entry.pack()
 
+        self.check_box=Checkbutton(self,text=u'是否自动刷楼',variable=self.check_box_var)
+        self.check_box.pack()
+
         self.botton1=Button(self)
         self.botton1['text']=u'开始抢楼'
         self.botton1['command']=self.thread_control
@@ -99,8 +105,19 @@ class Automan(Frame):
         self.info_label['bg']='red'
         self.info_label.pack()
 
+        self.botton3=Button(self,text=u'测试')
+        self.botton3['command']=self.ceshi
+        self.botton3.pack()
 
         self.thread_flag=True
+
+    def ceshi(self):
+        self.lang_list = []
+        f = open('random_lang.txt', 'r')
+        lines = f.readlines()
+        for line in lines:
+            self.lang_list.append(line.decode('utf-8'))
+        pass
     def login(self):
 
         self.username=self.username_var.get()
@@ -137,11 +154,9 @@ class Automan(Frame):
         time.sleep(1)
         while 1:
             if self.thread_flag==False:
-                #messagebox.showinfo(title=u'终止',message=u'您已终止程序')
                 self.info_var.set(u'您已终止程序')
                 self.browser.quit()
                 break
-            #print 'loop'
             if test_floor_num>31:
                 last_page_ele_try = self.browser.find_element_by_xpath('//*[@class="pagination cd-pagination"]/li[last()]/a')
                 last_page_try = last_page_ele_try.get_attribute('href')
@@ -160,29 +175,52 @@ class Automan(Frame):
 
             if last_floor_num == self.target_floor:
                 time.sleep(1)
-                content = self.browser.find_element_by_tag_name('iframe')
-                self.browser.switch_to_frame(content)
-                p = self.browser.find_element_by_tag_name('body')
-                p.send_keys(self.con)
-                self.browser.switch_to_default_content()
-                self.browser.find_element_by_id('post-thread-btn').click()
+                self.get_floor()
+                # content = self.browser.find_element_by_tag_name('iframe')
+                # self.browser.switch_to_frame(content)
+                # p = self.browser.find_element_by_tag_name('body')
+                # p.send_keys(self.con)
+                # self.browser.switch_to_default_content()
+                # self.browser.find_element_by_id('post-thread-btn').click()
                 self.browser.quit()
                 self.info_var.set(u'恭喜抢楼成功，抢到楼层%d'%(self.target_floor+1))
-                #messagebox.showinfo(title=u'抢楼成功', message='恭喜抢楼成功，抢到楼层%d'%self.target_floor)
                 break
             else:
                 if last_floor_num<self.target_floor:
-                #print '[!]Current Floor:'+last_floor
+                    if self.check_box_var.get()==1:
+                        self.browser.switch_to_window(handles[-1])
+                        self.get_floor()
+                        continue
                     self.browser.refresh()
                     time.sleep(self.sleeptime)
-                    #print '[*]refresh'
                 else:
                     self.browser.quit()
                     self.info_var.set(u'抱歉，您要抢的楼层已经不存在，重新调整楼层位置')
-                    #messagebox.showwarning(title=u'失败',message=u'抱歉，您要抢的楼层已经不存在，重新调整楼层位置')
+
                     break
+    #输入内容发送
+    def get_floor(self):
+
+        content = self.browser.find_element_by_tag_name('iframe')
+        self.browser.switch_to_frame(content)
+        p = self.browser.find_element_by_tag_name('body')
+        #p.send_keys(self.con)
+        p.send_keys(self.lang_list[random.randint(0,len(self.lang_list)-1)])
+        self.browser.switch_to_default_content()
+        self.browser.find_element_by_id('post-thread-btn').click()
+        pass
+
     def quit_auto(self):
         self.thread_flag=False
+
+    def read_lang(self):
+        self.lang_list = []
+        f = open('random_lang.txt', 'r')
+        lines = f.readlines()
+        for line in lines:
+            self.lang_list.append(line.decode('utf-8'))
+        pass
+
     def thread_control(self):
         self.thread_flag=True
         self.t=threading.Thread(target=self.login)
@@ -193,6 +231,6 @@ if __name__ == '__main__':
     root=Tk()
     root.title(u'安全通内部抢楼机器人')
     root.wm_attributes('-topmost', 1)
-    root.geometry('400x500+30+30')
+    root.geometry('400x600+30+30')
     auto_man=Automan(master=root)
     auto_man.mainloop()
